@@ -1,0 +1,11 @@
+/* Minimal overlay styles. Keep body transparent for OBS. */
+html, body, #app {
+  width: 100%;
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+canvas { display: block; }
