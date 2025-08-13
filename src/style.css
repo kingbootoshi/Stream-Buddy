@@ -8,4 +8,8 @@ body {
   background: transparent;
   overflow: hidden;
 }
-canvas { display: block; }
+canvas {
+  display: block;
+  /* Ensure crisp pixel art; avoid browser interpolation */
+  image-rendering: pixelated;
+}

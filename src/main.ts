@@ -66,7 +66,7 @@ async function main() {
   log.info('Textures loaded')
 
   const buddy = new DuckBuddy(textures)
-  buddy.position.set(app.renderer.width / 2, app.renderer.height / 2 + 40)
+  buddy.position.set(app.screen.width / 2, app.screen.height / 2)
   app.stage.addChild(buddy)
 
   // drive per-frame updates

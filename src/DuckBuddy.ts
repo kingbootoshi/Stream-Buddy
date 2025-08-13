@@ -38,6 +38,7 @@ export class DuckBuddy extends Container {
   private elapsed = 0;      // ms since last blink timer reset
   private nextBlinkIn = this.randBlinkMs();
   private walkPhase = 0;    // controls bobbing motion
+  private walkBaseY: number | null = null; // preserves original Y during walk
 
   constructor(tex: DuckTextures) {
     super();
@@ -48,7 +49,9 @@ export class DuckBuddy extends Container {
     const makePart = (frames: Texture[] | Texture, z: number): AnimatedSprite => {
       const textures = Array.isArray(frames) ? frames : [frames];
       const sprite = new AnimatedSprite(textures);
-      sprite.anchor.set(0.5);
+      // Use top-left origin so all assets that were authored to align at (0,0)
+      // in Photoshop will align perfectly here as well.
+      sprite.anchor.set(0, 0);
       sprite.zIndex = z;
       sprite.animationSpeed = 0.12;
       sprite.play();
@@ -67,12 +70,19 @@ export class DuckBuddy extends Container {
       hat:   makePart(this.tex.hat1 ?? Texture.EMPTY, 6),
     };
 
-    // fine-tune offsets for a natural layout (tweak to match art)
-    this.parts.feet.y  = 10;
-    this.parts.mouth.y = -10;
-    this.parts.eyes.y  = -16;
-    this.parts.hands.y = -5;
-    this.parts.hat.y   = -28;
+    // All parts share the same origin (0,0). If your art needs nudging,
+    // adjust these offsets; default is zero for pixel-perfect stack.
+    this.parts.feet.position.set(0, 0);
+    this.parts.mouth.position.set(0, 0);
+    this.parts.eyes.position.set(0, 0);
+    this.parts.hands.position.set(0, 0);
+    this.parts.hat.position.set(0, 0);
+
+    // Center the whole rig for easier placement while keeping per-part
+    // origin at (0,0). We derive pivot from the body texture size.
+    const w = this.tex.body.width;
+    const h = this.tex.body.height;
+    this.pivot.set(w / 2, h / 2);
 
     this.setHat(null);
     this.setState('idle');
@@ -97,9 +107,10 @@ export class DuckBuddy extends Container {
     }
 
     if (this.state === 'walk') {
-      // bobbing motion to complement foot cycle
-      this.walkPhase += dt * 0.012;
-      this.y = Math.sin(this.walkPhase) * 2;
+      // Capture base Y once to avoid teleporting when we override position
+      if (this.walkBaseY == null) this.walkBaseY = this.y;
+      this.walkPhase += dt * 0.012; // speed
+      this.y = this.walkBaseY + Math.sin(this.walkPhase) * 2; // bobbing about base
     }
   }
 
@@ -124,6 +135,8 @@ export class DuckBuddy extends Container {
         break;
 
       case 'walk': {
+        // remember current vertical position for bobbing reference
+        this.walkBaseY = this.y;
         const walkSeq = [
           this.tex.feet1, this.tex.feet2, this.tex.feet3,
           this.tex.feet4, this.tex.feet5, this.tex.feet4,
@@ -168,6 +181,11 @@ export class DuckBuddy extends Container {
         this.parts.hands.gotoAndStop(0);
         break;
       }
+    }
+    if (next !== 'walk') {
+      // reset walk offset when leaving walk state
+      if (this.walkBaseY != null) this.y = this.walkBaseY;
+      this.walkBaseY = null;
     }
   }
 
