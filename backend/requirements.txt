@@ -1,0 +1,9 @@
+# Pipecat AI with required service integrations
+pipecat-ai[assemblyai,openrouter,elevenlabs,mem0]
+
+# Environment variable management
+python-dotenv
+
+# Enhanced logging
+loguru 
+pyyaml
