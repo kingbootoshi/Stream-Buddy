@@ -97,9 +97,17 @@ async function main() {
       case '2': buddy.setState('walk'); break
       case '3': buddy.setState('talk'); break
       case '4': buddy.setState('angryTalk'); break
+      case '6': buddy.setState('happyTalk'); break
       case '5': buddy.setState('handsCrossed'); break
-      case 'h': buddy.setHat('hat1'); break
-      case 'H': buddy.setHat(null); break
+      case 'h': {
+        // Cycle through hats: hat1 -> hat2 -> hat3 -> none -> hat1 ...
+        const current = (buddy as any).currentHat as 'hat1' | 'hat2' | 'hat3' | null | undefined
+        const next = current === 'hat1' ? 'hat2' : current === 'hat2' ? 'hat3' : current === 'hat3' ? null : 'hat1'
+        buddy.setHat(next)
+        ;(buddy as any).currentHat = next
+        break
+      }
+      case 'H': buddy.setHat(null); (buddy as any).currentHat = null; break
     }
   })
 }

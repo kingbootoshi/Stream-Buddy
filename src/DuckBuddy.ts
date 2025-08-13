@@ -10,7 +10,7 @@ import { AnimatedSprite, Container, Texture } from 'pixi.js';
  * AnimatedSprite so we can loop frames (e.g., walking feet, talking mouth)
  * while leaving other parts static. Timing is dt-based to be framerate-agnostic.
  */
-export type DuckState = 'idle' | 'walk' | 'talk' | 'angryTalk' | 'handsCrossed';
+export type DuckState = 'idle' | 'walk' | 'talk' | 'happyTalk' | 'angryTalk' | 'handsCrossed';
 
 /**
  * Texture map for all required parts. Filenames must exist in `public/assets`.
@@ -43,6 +43,7 @@ export class DuckBuddy extends Container {
   // timers/state for micro-behaviors
   private elapsed = 0;      // ms since last blink timer reset
   private nextBlinkIn = this.randBlinkMs();
+  private blinkEnabled = true; // gate for automated blinking
   private walkPhase = 0;    // controls bobbing motion
   private walkBaseY: number | null = null; // preserves original Y during walk
   private bobPhase = 0;     // phase for idle bobbing
@@ -113,8 +114,8 @@ export class DuckBuddy extends Container {
     // Always enforce caller's configured base pixel scale; no size wobble.
     this.scale.set(this.baseScale);
 
-    // schedule blinks during any state except while a blink animation is in progress
-    if (this.elapsed >= this.nextBlinkIn) {
+    // schedule blinks only when enabled for the current state
+    if (this.blinkEnabled && this.elapsed >= this.nextBlinkIn) {
       this.playBlink();
       this.elapsed = 0;
       this.nextBlinkIn = this.randBlinkMs();
@@ -158,6 +159,9 @@ export class DuckBuddy extends Container {
     this.parts.feet.textures = [this.tex.feetIdle];
     this.parts.feet.gotoAndStop(0);
 
+    // default: enable blinking, then specialize per state
+    this.blinkEnabled = true;
+
     switch (next) {
       case 'idle':
         // no-op; blink/breathe handled in update()
@@ -188,6 +192,23 @@ export class DuckBuddy extends Container {
         this.parts.mouth.animationSpeed = 0.22;
         this.parts.mouth.loop = true;
         this.parts.mouth.play();
+        break;
+      }
+
+      case 'happyTalk': {
+        // happy eyes + neutral talking mouth
+        const talkSeq = [
+          this.tex.mouthTalk1, this.tex.mouthTalk2, this.tex.mouthTalk3,
+          this.tex.mouthTalk2,
+        ];
+        this.parts.mouth.textures = talkSeq;
+        this.parts.mouth.animationSpeed = 0.22;
+        this.parts.mouth.loop = true;
+        this.parts.mouth.play();
+        this.parts.eyes.textures = [this.tex.eyesHappy];
+        this.parts.eyes.gotoAndStop(0);
+        // Keep happy eyes; disable auto blink while in this state
+        this.blinkEnabled = false;
         break;
       }
 
