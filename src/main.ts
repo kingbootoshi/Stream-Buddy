@@ -1,5 +1,5 @@
 import './style.css'
-import { Application, Assets } from 'pixi.js'
+import { Application, Assets, SCALE_MODES, Texture } from 'pixi.js'
 import { DuckBuddy } from './DuckBuddy'
 import type { DuckTextures } from './DuckBuddy'
 import { createLogger } from './logger'
@@ -68,6 +68,20 @@ async function main() {
   const buddy = new DuckBuddy(textures)
   buddy.position.set(app.screen.width / 2, app.screen.height / 2)
   app.stage.addChild(buddy)
+
+  // Ensure pixel-art textures stay sharp at large scales by forcing
+  // nearest-neighbor sampling and disabling mipmaps on every baseTexture.
+  // Doc note: In PixiJS v8, sampling is controlled via BaseTexture scaleMode
+  // and mipmapping via BaseTexture.mipmap.
+  ;(Object.values(textures) as Texture[]).forEach((tex) => {
+    // Defensive: some entries (like hat when hidden) may be Texture.EMPTY
+    const base = tex.baseTexture;
+    base.scaleMode = SCALE_MODES.NEAREST;
+  })
+
+  // Scale the 64x64 rig to 10x while preserving crisp pixels. Breathing logic
+  // multiplies against this base so it won’t reset our scale.
+  buddy.setPixelScale(10)
 
   // drive per-frame updates
   app.ticker.add((t) => buddy.update(t.deltaMS))

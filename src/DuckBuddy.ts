@@ -33,6 +33,12 @@ export class DuckBuddy extends Container {
   private tex: DuckTextures;
   private parts: Record<Part, AnimatedSprite>;
   private state: DuckState = 'idle';
+  
+  /**
+   * Base uniform scale for the character (e.g., 10 for 10x). The idle
+   * breathing animation multiplies against this so we never stomp caller scale.
+   */
+  private baseScale = 1;
 
   // timers/state for micro-behaviors
   private elapsed = 0;      // ms since last blink timer reset
@@ -95,8 +101,12 @@ export class DuckBuddy extends Container {
     // subtle idle "breath" scale when not walking
     if (this.state !== 'walk') {
       const t = performance.now() * 0.002;
-      const scale = 1 + Math.sin(t) * 0.005;
-      this.scale.set(scale);
+      const breathe = 1 + Math.sin(t) * 0.005;
+      // Keep crisp pixel look by scaling uniformly from the configured base
+      this.scale.set(this.baseScale * breathe);
+    } else {
+      // While walking keep exact base scale (no breathing wobble)
+      this.scale.set(this.baseScale);
     }
 
     // schedule blinks during any state except while a blink animation is in progress
@@ -219,6 +229,18 @@ export class DuckBuddy extends Container {
   /** Returns a natural blink interval in milliseconds (2.5s–6s). */
   private randBlinkMs(): number {
     return 2500 + Math.random() * 3500;
+  }
+
+  /**
+   * Set the pixel-art scale multiplier.
+   *
+   * Why: We want to scale a 64x64 character cleanly (nearest-neighbor) without
+   * the breathing animation resetting it back to ~1. This method updates the
+   * base factor used by all internal animations.
+   */
+  public setPixelScale(multiplier: number): void {
+    this.baseScale = Math.max(0.0001, multiplier);
+    this.scale.set(this.baseScale);
   }
 }
 
