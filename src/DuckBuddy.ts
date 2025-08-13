@@ -45,6 +45,14 @@ export class DuckBuddy extends Container {
   private nextBlinkIn = this.randBlinkMs();
   private walkPhase = 0;    // controls bobbing motion
   private walkBaseY: number | null = null; // preserves original Y during walk
+  private bobPhase = 0;     // phase for idle bobbing
+  private bobAmplitudePx = 1; // max idle offset in source pixels (integer)
+  private bobSpeed = 0.004;   // phase increment multiplier per ms
+  private headBobFactor = 1.5;  // scale head offset relative to body (1 = same)
+  private headFollowsBody = true; // keep head at least as far down as body to avoid neck gap
+  private baseYByPart: Record<Part, number> = {
+    body: 0, feet: 0, head: 0, hands: 0, mouth: 0, eyes: 0, hat: 0,
+  };
 
   constructor(tex: DuckTextures) {
     super();
@@ -89,6 +97,10 @@ export class DuckBuddy extends Container {
     const w = this.tex.body.width;
     const h = this.tex.body.height;
     this.pivot.set(w / 2, h / 2);
+    // record default Y for pixel-perfect bobbing offsets
+    (Object.keys(this.parts) as Part[]).forEach((key) => {
+      this.baseYByPart[key] = this.parts[key].y;
+    });
 
     this.setHat(null);
     this.setState('idle');
@@ -98,16 +110,8 @@ export class DuckBuddy extends Container {
   update(dt: number): void {
     this.elapsed += dt;
 
-    // subtle idle "breath" scale when not walking
-    if (this.state !== 'walk') {
-      const t = performance.now() * 0.002;
-      const breathe = 1 + Math.sin(t) * 0.005;
-      // Keep crisp pixel look by scaling uniformly from the configured base
-      this.scale.set(this.baseScale * breathe);
-    } else {
-      // While walking keep exact base scale (no breathing wobble)
-      this.scale.set(this.baseScale);
-    }
+    // Always enforce caller's configured base pixel scale; no size wobble.
+    this.scale.set(this.baseScale);
 
     // schedule blinks during any state except while a blink animation is in progress
     if (this.elapsed >= this.nextBlinkIn) {
@@ -121,6 +125,21 @@ export class DuckBuddy extends Container {
       if (this.walkBaseY == null) this.walkBaseY = this.y;
       this.walkPhase += dt * 0.012; // speed
       this.y = this.walkBaseY + Math.sin(this.walkPhase) * 2; // bobbing about base
+      // Disable per-part idle bobbing while walking; restore to base Y.
+      this.applyPartOffsets(0, 0);
+    } else {
+      // Pixel-perfect idle bobbing: move torso and head clusters by integer px.
+      this.bobPhase += dt * this.bobSpeed; // slower than walk bob
+      const s = Math.sin(this.bobPhase);
+      // Prevent torso from moving up relative to the feet by clamping
+      // negative (upward) offsets to 0px. This keeps the seam one-pixel thick.
+      const bodyOffset = Math.max(0, Math.round(s * this.bobAmplitudePx));
+      // Head follows body down to keep the neck seam one pixel. It can move
+      // more than body (factor > 1) but never less when following is enabled.
+      const headRaw = Math.round(s * this.bobAmplitudePx * this.headBobFactor);
+      const headDown = Math.max(0, headRaw);
+      const headOffset = this.headFollowsBody ? Math.max(bodyOffset, headDown) : headDown;
+      this.applyPartOffsets(bodyOffset, headOffset);
     }
   }
 
@@ -196,6 +215,8 @@ export class DuckBuddy extends Container {
       // reset walk offset when leaving walk state
       if (this.walkBaseY != null) this.y = this.walkBaseY;
       this.walkBaseY = null;
+      // Ensure part Y starts from base when entering non-walk states
+      this.applyPartOffsets(0, 0);
     }
   }
 
@@ -232,6 +253,26 @@ export class DuckBuddy extends Container {
   }
 
   /**
+   * Apply pixel-art bobbing offsets to grouped parts.
+   *
+   * - bodyGroupOffset: applied to torso-related parts (body, hands)
+   * - headGroupOffset: applied to head-related parts (head, eyes, mouth, hat)
+   *
+   * Offsets are in source pixels (pre-scale). Values are rounded externally
+   * to preserve crisp edges.
+   */
+  private applyPartOffsets(bodyGroupOffset: number, headGroupOffset: number): void {
+    // Torso cluster
+    this.parts.body.y  = this.baseYByPart.body  + bodyGroupOffset;
+    this.parts.hands.y = this.baseYByPart.hands + bodyGroupOffset;
+    // Head cluster
+    this.parts.head.y  = this.baseYByPart.head  + headGroupOffset;
+    this.parts.eyes.y  = this.baseYByPart.eyes  + headGroupOffset;
+    this.parts.mouth.y = this.baseYByPart.mouth + headGroupOffset;
+    this.parts.hat.y   = this.baseYByPart.hat   + headGroupOffset;
+  }
+
+  /**
    * Set the pixel-art scale multiplier.
    *
    * Why: We want to scale a 64x64 character cleanly (nearest-neighbor) without
@@ -241,6 +282,20 @@ export class DuckBuddy extends Container {
   public setPixelScale(multiplier: number): void {
     this.baseScale = Math.max(0.0001, multiplier);
     this.scale.set(this.baseScale);
+  }
+
+  /**
+   * Configure idle bobbing at runtime.
+   *
+   * - amplitudePx: how many source pixels to move up/down at peaks (int suggested)
+   * - speed: phase speed multiplier (higher = faster)
+   * - headFactor: head offset relative to body (e.g., 0.8 = subtler head)
+   */
+  public setIdleBob(params: { amplitudePx?: number; speed?: number; headFactor?: number; headFollowsBody?: boolean }): void {
+    if (params.amplitudePx != null) this.bobAmplitudePx = Math.max(0, params.amplitudePx | 0);
+    if (params.speed != null) this.bobSpeed = Math.max(0, params.speed);
+    if (params.headFactor != null) this.headBobFactor = params.headFactor;
+    if (params.headFollowsBody != null) this.headFollowsBody = params.headFollowsBody;
   }
 }
 
