@@ -83,8 +83,76 @@ async function main() {
   // multiplies against this base so it won’t reset our scale.
   buddy.setPixelScale(10)
 
-  // drive per-frame updates
-  app.ticker.add((t) => buddy.update(t.deltaMS))
+  // --- Simple horizontal auto-walk controller ---------------------------------
+  /**
+   * Runtime controller for autonomous side-to-side walking.
+   *
+   * Rules:
+   * - Only moves when the rig is in `walk` state
+   * - Keeps Y position stable (X only), letting the rig handle tiny bobbing
+   * - Randomly flips direction over time and also bounces at the edges
+   */
+  const walkCtrl = {
+    direction: 1 as 1 | -1,          // 1 moves right, -1 moves left
+    // Increase speed by 1.5x as requested (was 48)
+    speedPxPerSec: 72,                // horizontal speed in screen pixels per second
+    edgeMarginPx: 32,                 // soft margin to avoid hugging screen edge
+    flipTimerMs: 0,                   // accumulates time until next random flip
+    nextFlipInMs: 1500 + Math.random() * 2500, // randomized initial flip window
+  }
+
+  // Start walking by default for the requested behavior
+  buddy.setState('walk')
+
+  // drive per-frame updates (animation + controller)
+  app.ticker.add((t) => {
+    const dtMs = t.deltaMS
+    buddy.update(dtMs)
+
+    // Move only while in 'walk' state; pause movement in other states
+    if (buddy.getState() !== 'walk') return
+
+    // Compute dynamic bounds each frame so we use the full browser width
+    // while keeping the character fully visible at the edges. We derive a
+    // half-width from the rendered size (post-scale, post-mirror).
+    const halfW = Math.max(0, Math.round(buddy.width / 2))
+    const minX = halfW
+    const maxX = Math.max(minX, app.screen.width - halfW)
+
+    // Random direction flip over time
+    walkCtrl.flipTimerMs += dtMs
+    if (walkCtrl.flipTimerMs >= walkCtrl.nextFlipInMs) {
+      walkCtrl.direction = (walkCtrl.direction === 1 ? -1 : 1)
+      walkCtrl.flipTimerMs = 0
+      walkCtrl.nextFlipInMs = 1500 + Math.random() * 2500
+      log.debug('Random flip', { direction: walkCtrl.direction })
+    }
+
+    // Integrate horizontal motion
+    const dx = walkCtrl.direction * walkCtrl.speedPxPerSec * (dtMs / 1000)
+    buddy.x += dx
+
+    // Face where we're going and snap to integer pixels for choppier walk
+    buddy.setFacing(walkCtrl.direction === 1 ? 'right' : 'left')
+    buddy.x = Math.round(buddy.x)
+
+    // Edge bounce with clamping
+    if (buddy.x <= minX) {
+      buddy.x = minX
+      if (walkCtrl.direction === -1) {
+        walkCtrl.direction = 1
+        walkCtrl.flipTimerMs = 0
+        log.debug('Edge bounce -> right')
+      }
+    } else if (buddy.x >= maxX) {
+      buddy.x = maxX
+      if (walkCtrl.direction === 1) {
+        walkCtrl.direction = -1
+        walkCtrl.flipTimerMs = 0
+        log.debug('Edge bounce -> left')
+      }
+    }
+  })
 
   // Expose simple control API for OBS or devtools
   // window.duckBuddy.setState('talk'); window.duckBuddy.setHat('hat2')

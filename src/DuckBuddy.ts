@@ -33,6 +33,8 @@ export class DuckBuddy extends Container {
   private tex: DuckTextures;
   private parts: Record<Part, AnimatedSprite>;
   private state: DuckState = 'idle';
+  /** Horizontal facing multiplier: 1 = right, -1 = left */
+  private facingMul: 1 | -1 = 1;
   
   /**
    * Base uniform scale for the character (e.g., 10 for 10x). The idle
@@ -111,8 +113,10 @@ export class DuckBuddy extends Container {
   update(dt: number): void {
     this.elapsed += dt;
 
-    // Always enforce caller's configured base pixel scale; no size wobble.
-    this.scale.set(this.baseScale);
+    // Always enforce caller's configured base pixel scale, with horizontal
+    // mirroring based on facing. We avoid resetting orientation on state
+    // switches by doing this every frame.
+    this.scale.set(this.baseScale * this.facingMul, this.baseScale);
 
     // schedule blinks only when enabled for the current state
     if (this.blinkEnabled && this.elapsed >= this.nextBlinkIn) {
@@ -142,6 +146,27 @@ export class DuckBuddy extends Container {
       const headOffset = this.headFollowsBody ? Math.max(bodyOffset, headDown) : headDown;
       this.applyPartOffsets(bodyOffset, headOffset);
     }
+  }
+
+  /**
+   * Get the current high-level state of the rig.
+   *
+   * Why: External controllers (e.g., world/AI logic) need to know whether the
+   * character is currently in `walk` before applying horizontal motion. We keep
+   * state internal for orchestration but expose a read-only view for callers.
+   */
+  public getState(): DuckState {
+    return this.state;
+  }
+
+  /**
+   * Set facing direction for horizontal mirroring.
+   *
+   * Why: External controllers decide where the character is moving. We reflect
+   * that intent visually by flipping the rig on X using a negative scale.
+   */
+  public setFacing(direction: 'left' | 'right'): void {
+    this.facingMul = direction === 'left' ? -1 : 1;
   }
 
   /** Change the rig's high-level state; resets part animations accordingly. */
