@@ -3,6 +3,7 @@ import { Application, Assets, SCALE_MODES, Texture } from 'pixi.js'
 import { DuckBuddy } from './DuckBuddy'
 import type { DuckTextures } from './DuckBuddy'
 import { createLogger } from './logger'
+import { OverlayController } from './overlay-controller'
 
 const log = createLogger('overlay')
 
@@ -69,6 +70,11 @@ async function main() {
   buddy.position.set(app.screen.width / 2, app.screen.height / 2)
   app.stage.addChild(buddy)
 
+  // Connect overlay controller to backend WS control-plane
+  const overlayWs = (import.meta as any).env?.VITE_OVERLAY_WS_URL || 'ws://127.0.0.1:8710/ws/overlay'
+  const controller = new OverlayController(overlayWs, buddy)
+  controller.start()
+
   // Ensure pixel-art textures stay sharp at large scales by forcing
   // nearest-neighbor sampling and disabling mipmaps on every baseTexture.
   // Doc note: In PixiJS v8, sampling is controlled via BaseTexture scaleMode
@@ -108,6 +114,7 @@ async function main() {
   app.ticker.add((t) => {
     const dtMs = t.deltaMS
     buddy.update(dtMs)
+    controller.update(dtMs)
 
     // Move only while in 'walk' state; pause movement in other states
     if (buddy.getState() !== 'walk') return

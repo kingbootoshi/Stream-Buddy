@@ -31,12 +31,15 @@ from pipecat.services.assemblyai.stt import AssemblyAISTTService
 from pipecat.services.openrouter.llm import OpenRouterLLMService
 from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
+from pipecat.processors.filters.function_filter import FunctionFilter
+from pipecat.processors.frame_processor import FrameDirection
 
 # 🔑  grab your keys from env or a secrets manager
 AAI_KEY   = os.environ["ASSEMBLYAI_API_KEY"]
 OR_KEY    = os.environ["OPENROUTER_API_KEY"]        # needs Referer header too
 EL_KEY    = os.environ["ELEVENLABS_API_KEY"]
-MEM0_KEY  = os.environ["MEM0_API_KEY"]
+# Optional
+MEM0_KEY  = os.getenv("MEM0_API_KEY", "")
 
 # 📄  System prompt configuration (YAML)
 # Allow overriding the prompt path with env var, default to `config/personality.yaml`.
@@ -138,10 +141,42 @@ tts = ElevenLabsTTSService(
         # ultra-low round-trip times, re-enable a low-latency mode—but expect a
         # noticeable fidelity tradeoff.
 
+# ---------------------------
+# Mic gating (push-to-talk) & echo prevention during bot speech
+# ---------------------------
+from pipecat.frames.frames import (
+    InputAudioRawFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
+)
+
+# Import the overlay control app & shared knobs
+from overlay_server import api as overlay_api  # FastAPI app
+from overlay_server import bus, listening_flag, current_mood
+
+# Track when TTS is actively speaking to temporarily drop mic frames
+tts_speaking = {"on": False}
+
+
+async def _mic_gate(frame):  # noqa: D401
+    """Drop user audio/VAD frames while muted to avoid queue growth.
+
+    Why: Pausing processors may buffer; dropping frames is safer for long-idle.
+    """
+    # Also drop user audio while TTS is speaking to avoid echo/feedback.
+    if listening_flag["on"] and not tts_speaking["on"]:
+        return True
+    return not isinstance(frame, (InputAudioRawFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame))
+
+
+mic_gate_filter = FunctionFilter(filter=_mic_gate, direction=FrameDirection.DOWNSTREAM)
+
+
 # 🪄  put it all together
-# Build the processing pipeline.
+# Build the processing pipeline with gating and mute filter.
 pipeline = Pipeline([
     io.input(),                      # 🎤 capture mic frames
+    mic_gate_filter,                 # 🚦 gate mic by hotkey
     stt,                             # 🗣️  → transcription frames
     context_aggregator.user(),       # 🧩 convert to chat messages
     llm,                             # 🧠  → assistant text reply
@@ -229,10 +264,32 @@ task.set_reached_downstream_filter(
 # Async entry point
 # ---------------------------
 async def run_pipeline():
-    """Create an event-loop-aware runner and execute the task."""
+    """Create an event-loop-aware runner and execute the task + control server."""
 
     runner = PipelineRunner()  # Now created inside an active event loop
-    await runner.run(task)
+
+    # Tie TTS lifecycle to overlay events for animation sync
+    @task.event_handler("on_frame_reached_downstream")
+    async def _signal_overlay(_, frame):  # noqa: D401
+        if isinstance(frame, TTSStartedFrame):
+            # Mark bot speaking to drop user mic frames (prevents echo)
+            tts_speaking["on"] = True
+            bus.snapshot["talking"] = True
+            await bus.broadcast("start_talking", {"mood": current_mood["value"]})
+        elif isinstance(frame, TTSStoppedFrame):
+            # Re-enable mic ingestion
+            tts_speaking["on"] = False
+            bus.snapshot["talking"] = False
+            await bus.broadcast("stop_talking")
+
+    import uvicorn  # Local import to avoid hard dependency at import time
+
+    server = uvicorn.Server(uvicorn.Config(overlay_api, host="127.0.0.1", port=8710, log_level="info"))
+
+    # Run control server and pipeline concurrently
+    server_task = asyncio.create_task(server.serve())
+    pipeline_task = asyncio.create_task(runner.run(task))
+    await asyncio.gather(server_task, pipeline_task)
 
 
 if __name__ == "__main__":

@@ -7,3 +7,7 @@ python-dotenv
 # Enhanced logging
 loguru 
 pyyaml
+
+# Local control plane (HTTP + WebSocket)
+fastapi
+uvicorn[standard]
