@@ -33,6 +33,11 @@ from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.processors.filters.function_filter import FunctionFilter
 from pipecat.processors.frame_processor import FrameDirection
+from pipecat.processors.filters.stt_mute_filter import (
+    STTMuteFilter,
+    STTMuteConfig,
+    STTMuteStrategy,
+)
 
 # 🔑  grab your keys from env or a secrets manager
 AAI_KEY   = os.environ["ASSEMBLYAI_API_KEY"]
@@ -148,6 +153,8 @@ from pipecat.frames.frames import (
     InputAudioRawFrame,
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
+    StartInterruptionFrame,
+    StopInterruptionFrame,
 )
 
 # Import the overlay control app & shared knobs
@@ -166,10 +173,20 @@ async def _mic_gate(frame):  # noqa: D401
     # Also drop user audio while TTS is speaking to avoid echo/feedback.
     if listening_flag["on"] and not tts_speaking["on"]:
         return True
-    return not isinstance(frame, (InputAudioRawFrame, UserStartedSpeakingFrame, UserStoppedSpeakingFrame))
+    return not isinstance(
+        frame,
+        (
+            InputAudioRawFrame,
+            UserStartedSpeakingFrame,
+            UserStoppedSpeakingFrame,
+            StartInterruptionFrame,
+            StopInterruptionFrame,
+        ),
+    )
 
 
 mic_gate_filter = FunctionFilter(filter=_mic_gate, direction=FrameDirection.DOWNSTREAM)
+stt_mute = STTMuteFilter(config=STTMuteConfig(strategies={STTMuteStrategy.ALWAYS}))
 
 
 # 🪄  put it all together
@@ -178,6 +195,7 @@ pipeline = Pipeline([
     io.input(),                      # 🎤 capture mic frames
     mic_gate_filter,                 # 🚦 gate mic by hotkey
     stt,                             # 🗣️  → transcription frames
+    stt_mute,                        # 🤐 mute STT during bot speech to avoid echo/interruptions
     context_aggregator.user(),       # 🧩 convert to chat messages
     llm,                             # 🧠  → assistant text reply
     tts,                             # 🔊  → audio frames

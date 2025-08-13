@@ -1,3 +1,20 @@
+## Duck Buddy – Backend/Frontend Coordination
+
+This project wires a Pipecat voice backend to a PixiJS overlay for OBS. The
+backend stays fully local (no WebRTC), while a tiny control plane broadcasts
+animation cues over WebSocket so the overlay animates in sync with speech.
+
+Key links:
+- Backend control server: `backend/overlay_server.py`
+- Voice pipeline: `backend/main.py`
+- Overlay controller: `src/overlay-controller.ts`
+- Full integration guide: `docs/integration-voice-agent.md`
+
+Highlights:
+- Push‑to‑talk: mic muted by default; toggle listening with a hotkey
+- Echo prevention: STT is muted during TTS (no self-hear/feedback)
+- Stateful WS with snapshot for robust reconnect in OBS
+
 ### Duck Buddy Overlay — Developer Guide
 
 This project renders a pixel-art companion (“Quest Boo”) using PixiJS v8. The character is a paper-doll rig built from layered sprites so face, mouth, hands, feet, hat, etc. can animate independently. This guide orients new contributors and backend integrators.

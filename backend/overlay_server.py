@@ -150,6 +150,21 @@ async def listen_stop(_: None = Depends(_auth)) -> JSONResponse:  # noqa: D401
     return JSONResponse({"ok": True})
 
 
+@api.post("/api/listen/toggle")
+async def listen_toggle(_: None = Depends(_auth)) -> JSONResponse:  # noqa: D401
+    """Toggle mic listening state and broadcast appropriate events."""
+    listening_flag["on"] = not listening_flag["on"]
+    state = listening_flag["on"]
+    bus.snapshot["listening"] = state
+    if state:
+        await bus.broadcast("listen_on")
+        await bus.broadcast("force_state", {"state": "handsCrossed"})
+    else:
+        await bus.broadcast("listen_off")
+        await bus.broadcast("force_state", {"state": None})
+    return JSONResponse({"ok": True, "listening": state})
+
+
 @api.post("/api/talk/mood")
 async def set_talk_mood(body: Dict[str, str], _: None = Depends(_auth)) -> JSONResponse:  # noqa: D401
     """Set default talking mood for the next speaking turn."""
