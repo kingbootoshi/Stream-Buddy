@@ -42,10 +42,10 @@ Events (server → overlay):
 
 ### Backend pipeline
 
-File: `backend/main.py`
+Files: `backend/main.py`, `backend/src/processors/mic_gate.py`
 
-- Mic gate (FunctionFilter) drops frames unless listening is ON
-- STTMuteFilter(ALWAYS) mutes STT whenever TTS is speaking
+- Custom MicGate (FrameProcessor) hard-gates mic input/VAD frames pre‑STT while muted
+- STTMuteFilter(ALWAYS) mutes STT whenever TTS is speaking (anti‑barge‑in)
 - TTS start/stop drives overlay events so animations sync precisely with audio
 
 ### Overlay behavior
@@ -177,5 +177,21 @@ Integrate by calling `updateCycle(dtMs)` in the ticker before motion. Movement l
 - Implement `OverlayController` in `main.ts` and attach to `window`.
 - Add the idle/walk scheduler stub above.
 - Optionally expose `setSpeed`, `setBounds`, and `setFacing` overrides for experimentation.
+
+### Why a custom MicGate FrameProcessor
+
+Pipecat’s stock filters (FunctionFilter/FrameFilter/NullFilter) always pass System frames. `InputAudioRawFrame` (mic audio) and VAD/Interruption frames are System frames, so built‑in filters cannot truly block them pre‑STT. To implement a true push‑to‑talk toggle (mic fully off until enabled), we use a tiny custom FrameProcessor:
+
+- Placed before STT to prevent audio from ever reaching the STT service
+- Drops only `InputAudioRawFrame` and VAD/Interruption frames when `listening` is off or TTS is speaking
+- Always forwards lifecycle frames (e.g., `StartFrame`) and all non‑input frames
+- Composes with `STTMuteFilter(ALWAYS)` after STT for clean anti‑barge‑in during bot speech
+
+Operationally:
+- Start muted (`listening=false`): no audio or VAD leaves the input transport
+- Toggle on: MicGate allows input/VAD; STT resumes and downstream proceeds
+- During bot speech: STTMuteFilter mutes STT regardless of toggle to avoid echo/overlap
+
+This achieves a hard mic cutoff at the correct boundary with predictable behavior and low code surface.
 
 

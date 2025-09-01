@@ -12,6 +12,7 @@ Key links:
 
 Highlights:
 - Push‑to‑talk: mic muted by default; toggle listening with a hotkey
+- Hard mic gate: a custom FrameProcessor drops System input/VAD frames pre‑STT while muted
 - Echo prevention: STT is muted during TTS (no self-hear/feedback)
 - Stateful WS with snapshot for robust reconnect in OBS
 
@@ -24,6 +25,7 @@ This project renders a pixel-art companion (“Quest Boo”) using PixiJS v8. Th
 - `src/main.ts`: App bootstrap, asset loading, renderer setup, and a small “auto-walk” controller that moves the character horizontally.
 - `public/assets/*`: All PNG layers used by the rig. Filenames are referenced by alias in `src/main.ts` and typed in `DuckBuddy.ts`.
 - `src/logger.ts`: Minimal browser logger with console routing. Keep logs structured; switch to Winston-in-worker later if needed.
+ - `backend/src/processors/mic_gate.py`: Custom Pipecat FrameProcessor for true push‑to‑talk gating
 
 #### Runtime architecture
 - Pixi v8 `Application` is initialized in `src/main.ts`. `DuckBuddy` is added to stage.

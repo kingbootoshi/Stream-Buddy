@@ -11,3 +11,6 @@ pyyaml
 # Local control plane (HTTP + WebSocket)
 fastapi
 uvicorn[standard]
+ 
+# Twitch IRC client
+twitchio
