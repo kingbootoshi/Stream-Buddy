@@ -58,8 +58,13 @@ def build_pipeline(settings: Settings, state: SharedState):
         audio_in_sample_rate=audio_params.audio_in_sample_rate,
         audio_out_sample_rate=audio_params.audio_out_sample_rate,
     )
-
-    task = PipelineTask(pipeline, params=task_params)
+    
+    task = PipelineTask(
+        pipeline,
+        params=task_params,
+        idle_timeout_secs=None,
+        cancel_on_idle_timeout=False,
+    )
 
     return pipeline, task, io, task_params, context_aggregator
 

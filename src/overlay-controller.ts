@@ -35,8 +35,6 @@ export class OverlayController {
   private reconnectMs = 1000
   private readonly maxReconnectMs = 8000
   private talking = false
-  // listening is tracked from server snapshot/events; suppress unused var lint by using it in logic
-  private listening = false
   private defaultMood: Mood = 'neutral'
   private forcedState: 'idle' | 'walk' | 'handsCrossed' | null = null
 
@@ -57,14 +55,9 @@ export class OverlayController {
 
   /** Advance controller timers each frame. */
   update(dtMs: number): void {
-    // Idle/walk only when not talking and either not listening or not forced
+    // Idle/walk only when not talking and not forced
     if (this.talking) return
     if (this.forcedState) return
-    // When explicitly listening (push-to-talk armed) and not talking,
-    // favor idle stance over auto-roam to convey "awaiting input".
-    if (this.listening && this.buddy.getState() !== 'handsCrossed') {
-      this.buddy.setState('idle')
-    }
     this.cycleTimer += dtMs
     if (this.cycleTimer >= this.nextCycle) {
       this.isRoaming = !this.isRoaming
@@ -103,7 +96,6 @@ export class OverlayController {
     switch (evt.type) {
       case 'hello': {
         const s = evt.data as Snapshot
-        this.listening = s.listening
         this.talking = s.talking
         this.defaultMood = s.mood
         this.forcedState = s.forcedState
@@ -115,11 +107,9 @@ export class OverlayController {
         break
       }
       case 'listen_on':
-        this.listening = true
         this.buddy.setState('handsCrossed')
         break
       case 'listen_off':
-        this.listening = false
         this.forcedState = null
         this.talking = false
         this.buddy.setState('walk')

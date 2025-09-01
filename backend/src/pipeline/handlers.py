@@ -94,5 +94,15 @@ def register_handlers(task, state: SharedState, bus: OverlayEventBus) -> None:
         elif isinstance(frame, TTSStoppedFrame):
             state.set_tts_speaking(False)
             await bus.on_tts_stopped()
+            # When a TTS turn completes, resume walking visuals by clearing any
+            # previously forced overlay pose (e.g., handsCrossed from listen_on).
+            # This aligns with the UX: after speaking, the duck should walk even
+            # if we're still in listening mode.
+            try:
+                state.set_forced_state(None)
+                bus.snapshot["forcedState"] = None
+                await bus.broadcast("force_state", {"state": None})
+            except Exception:  # pragma: no cover - best-effort broadcast
+                pass
 
 
