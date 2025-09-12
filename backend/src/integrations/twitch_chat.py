@@ -25,9 +25,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
+from collections import deque
 
 from loguru import logger
 import httpx
@@ -40,7 +40,6 @@ from pipecat.frames.frames import (
     TextFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
-    TTSStoppedFrame,
 )
 from pipecat.pipeline.task import PipelineTask
 
@@ -49,19 +48,17 @@ from ..config.settings import Settings
 from .base import BaseIntegration
 
 
-@dataclass
-class ChatTrigger:
-    user: str
-    text: str
+# No queued worker; TwitchChatSource handles queuing/backpressure.
 
 
 class TwitchChatIntegration(BaseIntegration):
     """Listens to Twitch chat, queues triggers, and injects text into pipeline."""
 
-    def __init__(self, settings: Settings, state: SharedState) -> None:
+    def __init__(self, settings: Settings, state: SharedState, source) -> None:
         self.settings = settings
         self.state = state
         self.task: Optional[PipelineTask] = None
+        self.source = source  # TwitchChatSource
 
         # Config from env (same as example.py expectations)
         self.channel_login = (os.getenv("TWITCH_CHANNEL") or "bootoshicodes").strip()
@@ -79,9 +76,8 @@ class TwitchChatIntegration(BaseIntegration):
         self._echo_to_chat = (os.getenv("TWITCH_ECHO_ASSISTANT_TO_CHAT", "1").strip() != "0")
 
         # Runtime state
-        self.queue: asyncio.Queue[ChatTrigger] = asyncio.Queue()
-        self._current_turn: Optional[ChatTrigger] = None
-        self._turn_done = asyncio.Event()
+        self._current_user: Optional[str] = None
+        self._pending_users = deque()
         self._collecting_llm = False
         self._llm_buf: list[str] = []
 
@@ -93,24 +89,35 @@ class TwitchChatIntegration(BaseIntegration):
         self.task = task
 
         # Tap downstream frames to know when a turn starts/ends and to collect
-        # the assistant's final text for optional chat echo.
+        # the assistant's final text for optional chat echo. Also detect when a
+        # Twitch-originated user text enters the common tail so we can attribute
+        # the next LLM turn to that user for chat echoing.
         @task.event_handler("on_frame_reached_downstream")
         async def _capture(_, frame):  # noqa: D401
             if isinstance(frame, LLMFullResponseStartFrame):
                 self._collecting_llm = True
                 self._llm_buf.clear()
+                # Attribute next LLM turn to first pending twitch user
+                if not self._current_user and self._pending_users:
+                    try:
+                        self._current_user = self._pending_users.popleft()
+                    except Exception:
+                        self._current_user = None
             elif isinstance(frame, LLMFullResponseEndFrame):
                 # LLM finished; optionally echo the final composed text to chat
                 self._collecting_llm = False
                 final = "".join(self._llm_buf).strip()
-                if final and self._echo_to_chat and self._current_turn and self._bot:
+                if final and self._echo_to_chat and self._current_user and self._bot:
                     try:
                         await self._bot.send_message_to_broadcaster(
                             self._bot.broadcaster_id,
-                            f"@{self._current_turn.user} {final[:350]}",
+                            f"@{self._current_user} {final[:350]}",
                         )
                     except Exception as exc:
                         logger.warning(f"Twitch echo failed: {exc}")
+                    finally:
+                        # Clear attribution after echoing
+                        self._current_user = None
             elif self._collecting_llm and hasattr(frame, "text"):
                 try:
                     txt = str(getattr(frame, "text", "") or "")
@@ -118,43 +125,9 @@ class TwitchChatIntegration(BaseIntegration):
                         self._llm_buf.append(txt)
                 except Exception:
                     pass
-            elif isinstance(frame, TTSStoppedFrame):
-                # Consider the turn completed once TTS stops speaking
-                self._turn_done.set()
 
-        # Start the twitch bot and queue worker in the background
+        # Start the twitch bot
         asyncio.create_task(self._run_bot())
-        asyncio.create_task(self._worker())
-
-    async def _worker(self) -> None:
-        """Single-consumer worker that respects mic listen/speak gating."""
-        assert self.task is not None, "PipelineTask not set"
-        while True:
-            trig = await self.queue.get()
-
-            # Wait until not listening and not speaking
-            while self.state.listening or self.state.tts_speaking:
-                await asyncio.sleep(0.1)
-
-            self._current_turn = trig
-            self._turn_done.clear()
-            self._llm_buf.clear()
-            self._collecting_llm = False
-
-            # Inject programmatic text as if the user typed it
-            text = f"Twitch Chat User [{trig.user}] says [{trig.text}]"
-            await self.task.queue_frame(TextFrame(text=text))
-            logger.info(f"<magenta>[QUEUE->PIPE]</magenta> {text}")
-
-            # Wait for the TTS to fully complete or timeout
-            try:
-                await asyncio.wait_for(self._turn_done.wait(), timeout=60)
-            except asyncio.TimeoutError:
-                logger.warning("Timed out waiting for TTS to finish twitch turn")
-
-            # Minimal cooldown between turns
-            await asyncio.sleep(self._cooldown_secs)
-            self._current_turn = None
 
     async def _run_bot(self) -> None:
         """Start the TwitchIO bot in a managed context."""
@@ -170,12 +143,12 @@ class TwitchChatIntegration(BaseIntegration):
             await bot.start()
 
     async def on_keyword_hit(self, user: str, text: str) -> None:
-        """Enqueue a chat trigger for processing."""
-        user = (user or "").strip()
-        text = (text or "").strip()
-        if not user or not text:
-            return
-        await self.queue.put(ChatTrigger(user=user, text=text))
+        """Send a chat message into the TwitchChatSource (non-blocking)."""
+        try:
+            self._pending_users.append(user)
+            await self.source.ingest(user, text)
+        except Exception as exc:
+            logger.warning(f"Failed to ingest twitch chat into pipeline: {exc}")
 
 
 class _Bot(commands.Bot):
@@ -352,4 +325,3 @@ class _Bot(commands.Bot):
             if not arr:
                 raise RuntimeError(f"No Helix user data returned for login '{login}'")
             return str(arr[0].get("id"))
-

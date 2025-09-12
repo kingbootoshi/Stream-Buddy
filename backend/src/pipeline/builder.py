@@ -46,6 +46,7 @@ def build_pipeline(settings: Settings, state: SharedState):
             mic_gate,
             stt,
             stt_mute,
+            ## CREATE A PARALLEL BRANCH RIGHT HERE TO HANDLE THE TWITCH CHAT INTEGRATION
             context_aggregator.user(),
             llm,
             tts,
