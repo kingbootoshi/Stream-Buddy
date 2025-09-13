@@ -116,3 +116,6 @@ Quest Boo will handle the rest.
 Quest Boo is the first AI character I’ve ever created (Feb 2023 in Discord) it's always been my dream to turn him into a streaming partner. I wasn't skilled enough though! After two years of grinding engineering with inspiration from Pipecat I've finally taken him on as a project. He reacts, talks, jokes, and *lives* alongside me and my community.
 
 He will be connected to my product, [Daybloom](https://www.daybloom.ai/) to ensure his digital mind continues to grow with every stream 
+<div align="center">
+<img width="1705" height="1070" alt="image" src="https://github.com/user-attachments/assets/608c6265-a8e4-4ed5-9d5a-7b78c6e3ccf3" />
+</div>
