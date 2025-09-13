@@ -1,84 +1,101 @@
-# Duck Buddy - Stream Overlay
+# **Quest Boo — Stream Buddy MVP**
 
-A PixiJS-powered animated duck character for OBS stream overlays. Features a modular paper-doll rig with multiple states and animations.
+*Your AI-powered pixel duck co-host, live on Twitch!*
 
-## Features
 
-- **Animated Character**: Layered sprite system with body parts (body, head, eyes, mouth, hands, feet, hat)
-- **Multiple States**: idle, walk, talk, angryTalk, handsCrossed
-- **Natural Behaviors**: Random blinking, idle breathing, walking bobbing
-- **OBS Ready**: Transparent background, optimized for browser source overlays
-- **Interactive Controls**: Keyboard shortcuts and JavaScript API for state changes
+---
 
-## Quick Start
+## 🦆 Lore
+
+Quest Boo is no ordinary duck. He’s Boo #99 from the [**Bitcoin Boos**](https://magiceden.us/ordinals/marketplace/bitcoin-boos), a collection of 101 pixel-perfect characters who live in the magical Boo Kingdom on block **775087** of the Bitcoin blockchain 
+
+Created by Bootoshi, Quest Boo is his right winged man in the Kingdom. He’s got the classic Boo rectangle eyes, pink cheeks, and a toughened adventurer’s heart. And a sassy ass attitude :<
+
+---
+
+## 🎥 COMING TO LIFE !!!
+
+[▶ Watch Quest Boo’s debut on Twitter/X](https://x.com/KingBootoshi/status/1966640938450907235)
+
+Quest Boo is officially alive—animated, AI-driven, and connected to Twitch chat in real time. Viewers can talk to him directly, and Bootoshi can hold voice-to-voice conversations with his AI buddy live on stream.
+
+---
+
+## ARCHITECTURE
+
+Quest Boo is split into two powerful parts:
+
+### **Frontend (Duck Rig + Overlay)**
+
+* Modular **pixel-art rig** (body, head, eyes, mouth, hands, feet, hats).
+* State system for moods: `idle`, `walk`, `talk`, `happyTalk`, `angryTalk`, `handsCrossed`.
+* Smooth animations (breathing, blinking, walking bobbing).
+* Browser-source overlay ready for **OBS**.
+
+### **Backend (AI Brain)**
+
+* Built with **Pipecat AI pipeline** (parallel voice + Twitch branches).
+* **Voice to Voice**: Bootoshi speaks → STT → LLM → TTS → Quest Boo replies in his own voice.
+* **Twitch Chat Aware**: Viewers type trigger words, Boo responds in real time.
+* Parallel design ensures Twitch chat isn’t blocked by mic state.
+
+---
+
+## 🛠️ Setup
+
+### Backend
+
+```bash
+cd backend
+cp .env.example .env   # add your keys
+pip install -r requirements.txt
+python main.py
+```
+
+### Frontend
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the served URL in your browser or add it as a Browser Source in OBS.
+Add the dev server URL as a Browser Source in OBS (transparent background).
 
-## Controls
+---
 
-### Keyboard Shortcuts
-- `1` - Idle state
-- `2` - Walk state  
-- `3` - Talk state
-- `4` - Angry talk state
-- `5` - Hands crossed state
-- `h` - Show hat
-- `H` - Hide hat
+## 🎛️ Controls
 
-### JavaScript API
-```javascript
-// Available in browser console or external scripts
-window.duckBuddy.setState('talk');
-window.duckBuddy.setState('walk');
-window.duckBuddy.setHat('hat1');
-window.duckBuddy.setHat(null); // Remove hat
+We recommend [Hammerspoon](https://www.hammerspoon.org/) (macOS) for system-wide mic toggling.
+
+Example hotkey (`Cmd+Alt+Space`):
+
+```lua
+local overlayKey = "devlocal"
+local base = "http://127.0.0.1:8710"
+local function post(path) hs.http.asyncPost(base..path, "", { ["X-Overlay-Key"]=overlayKey }, function() end) end
+hs.hotkey.bind({"cmd","alt"}, "space", function() post("/api/listen/toggle") end)
 ```
 
-## Asset Structure
+Once unmuted:
 
-All character assets are located in `public/assets/` and follow a consistent naming convention:
+* **Talk to Boo directly with your mic.**
+* Or **trigger him from Twitch chat** with configured keywords (`questboo`, `duck`, `chicken`).
 
-- **Body**: `Body.png`
-- **Head**: `Head.png`
-- **Eyes**: `Eyes.png`, `Eyes_Blinking1-3.png`, `Eyes_Angry.png`, `Eyes_Happy.png`
-- **Mouth**: `Mouth.png`, `Mouth_Talking1-3.png`, `Mouth_Talking_Angry1-3.png`
-- **Hands**: `Hands.png`, `Hands_Crossed.png`, `Hands_Pointing.png`
-- **Feet**: `Feet.png`, `Feet_Walking1-5.png`
-- **Hats**: `Hat1.png`, `Hat2.png`, `Hat3.png`
+---
 
-## Technical Details
+## 📖 Runbook
 
-- **Engine**: PixiJS v8 with modern initialization API
-- **Architecture**: Modular sprite composition with z-index layering
-- **Performance**: GPU-accelerated rendering, frame-rate independent timing
-- **Compatibility**: Modern browsers with WebGL support
+1. Start frontend (PixiJS overlay).
+2. Start backend (AI pipeline).
+3. Add frontend to OBS.
+4. Toggle mic → Talk or let chat summon Boo.
 
-## Development
+Quest Boo will handle the rest.
 
-The character rig is built using a layered sprite system where each body part is an independent `AnimatedSprite`. This allows for:
+---
 
-- Individual part animation (mouth talking, feet walking, eyes blinking)
-- Easy texture swapping for different emotions/states
-- Efficient GPU rendering with minimal draw calls
+## 💡 QUEST BOO IS SPECIAL !!!
 
-### Key Files
+Quest Boo is the first AI character I’ve ever created (Feb 2023 in Discord) it's always been my dream to turn him into a streaming partner. I wasn't skilled enough though! After two years of grinding engineering with inspiration from Pipecat I've finally taken him on as a project. He reacts, talks, jokes, and *lives* alongside me and my community.
 
-- `src/DuckBuddy.ts` - Main character rig and state machine
-- `src/main.ts` - Application bootstrap and asset loading
-- `src/logger.ts` - Lightweight browser logging utility
-
-## OBS Integration
-
-1. Add Browser Source in OBS
-2. Set URL to your dev server (e.g., `http://localhost:5173`)
-3. Set Width/Height as needed
-4. The background is automatically transparent
-
-## License
-
-MIT License - Feel free to use for your streams and projects!
+He will be connected to my product, Daybloom - https://www.daybloom.ai/ - to ensure his digital mind continues to grow with every stream 
