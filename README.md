@@ -4,22 +4,16 @@
 
 ![DuckBooIdling500HeadFeather](https://github.com/user-attachments/assets/066885cb-7a76-4458-a9e2-57d0b950773e)
 
----
-
 ## 🦆 Lore
 
 Quest Boo is no ordinary duck. He’s Boo #99 from the [**Bitcoin Boos**](https://magiceden.us/ordinals/marketplace/bitcoin-boos), a collection of 101 pixel-perfect characters who live in the magical Boo Kingdom on block **775087** of the Bitcoin blockchain 
 
 Created by Bootoshi, Quest Boo is his right winged man in the Kingdom. He’s got the classic Boo rectangle eyes, pink cheeks, and a toughened adventurer’s heart. And a sassy ass attitude :<
 
----
-
 ## 🎥 COMING TO LIFE !!!
 
 [▶ Watch Quest Boo’s debut on Twitter/X](https://x.com/KingBootoshi/status/1966640938450907235)
-Quest Boo is officially alive—animated, AI-driven, and connected to Twitch chat in real time. Viewers can talk to him directly, and Bootoshi can hold voice-to-voice conversations with his AI buddy live on stream.
-
----
+Quest Boo is officially alive! Animated, AI-driven, and connected to Twitch chat in real time. Viewers can talk to him directly, and Bootoshi can hold voice-to-voice conversations with his AI buddy live on stream.
 
 ## ARCHITECTURE
 
@@ -38,8 +32,6 @@ Quest Boo is split into two powerful parts:
 * **Voice to Voice**: Bootoshi speaks → STT → LLM → TTS → Quest Boo replies in his own voice.
 * **Twitch Chat Aware**: Viewers type trigger words, Boo responds in real time.
 * Parallel design ensures Twitch chat isn’t blocked by mic state.
-
----
 
 ## 🛠️ Setup
 
@@ -61,8 +53,6 @@ npm run dev
 
 Add the dev server URL as a Browser Source in OBS (transparent background).
 
----
-
 ## 🎛️ Controls
 
 We recommend [Hammerspoon](https://www.hammerspoon.org/) (macOS) for system-wide mic toggling.
@@ -81,8 +71,6 @@ Once unmuted:
 * **Talk to Boo directly with your mic.**
 * Or **trigger him from Twitch chat** with configured keywords (`questboo`, `duck`, `chicken`).
 
----
-
 ## 📖 Runbook
 
 1. Start frontend (PixiJS overlay).
@@ -92,9 +80,7 @@ Once unmuted:
 
 Quest Boo will handle the rest.
 
----
-
-## 💡 QUEST BOO IS SPECIAL !!!
+## FIN
 
 Quest Boo is the first AI character I’ve ever created (Feb 2023 in Discord) it's always been my dream to turn him into a streaming partner. I wasn't skilled enough though! After two years of grinding engineering with inspiration from Pipecat I've finally taken him on as a project. He reacts, talks, jokes, and *lives* alongside me and my community.
 
