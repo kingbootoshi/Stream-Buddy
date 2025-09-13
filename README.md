@@ -16,8 +16,7 @@ Created by Bootoshi, Quest Boo is his right winged man in the Kingdom. He’s go
 
 ## 🎥 COMING TO LIFE !!!
 
-<blockquote class="twitter-tweet" data-media-max-width="560"><p lang="en" dir="ltr">LETSSSSSSSSS GOOOOOOOOOOOOOOOOOOOOOOOOOOO !!!!!!<br><br>I GOT MY AI COMPANION CONNECTED TO TWITCH CHAT<br><br>QUEST BOO IS NOW OFFICIALLY MY STREAMING BUDDY YAYYYYYYY <a href="https://t.co/iNqIq41Etc">pic.twitter.com/iNqIq41Etc</a></p>&mdash; BOOTOSHI 👑 (@KingBootoshi) <a href="https://twitter.com/KingBootoshi/status/1966640938450907235?ref_src=twsrc%5Etfw">September 12, 2025</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-
+[▶ Watch Quest Boo’s debut on Twitter/X](https://x.com/KingBootoshi/status/1966640938450907235)
 Quest Boo is officially alive—animated, AI-driven, and connected to Twitch chat in real time. Viewers can talk to him directly, and Bootoshi can hold voice-to-voice conversations with his AI buddy live on stream.
 
 ---
