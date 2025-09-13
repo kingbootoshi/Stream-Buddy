@@ -13,7 +13,7 @@ from ..core.state import SharedState
 from ..config.settings import Settings
 from ..api.events import OverlayEventBus
 from ..api.server import create_api
-from .builder import build_pipeline
+from .builder_parallel import build_parallel_pipeline
 from .handlers import register_handlers
 
 
@@ -29,10 +29,13 @@ class AppRunner:
         self.api = create_api(self.settings, self.state, self.bus)
 
         # Build pipeline and register handlers
-        _pipeline, self.task, _io, _params, _agg = build_pipeline(
+        _pipeline, self.task, _io, _params, _agg, twitch_source = build_parallel_pipeline(
             self.settings, self.state
         )
         register_handlers(self.task, self.state, self.bus)
+        # Integrations (Twitch chat → pipeline)
+        from ..integrations.twitch_chat import TwitchChatIntegration
+        self.integrations = [TwitchChatIntegration(self.settings, self.state, twitch_source)]
 
     async def run(self) -> None:
         """Run FastAPI (Uvicorn) and pipeline concurrently until cancelled."""
@@ -48,6 +51,13 @@ class AppRunner:
 
         server_task = asyncio.create_task(server.serve())
         pipeline_task = asyncio.create_task(runner.run(self.task))
+
+        # Start integrations once the PipelineTask exists
+        for integ in getattr(self, "integrations", []):
+            try:
+                await integ.on_pipeline_ready(self.task)
+            except Exception as exc:  # pragma: no cover - resiliency
+                logger.warning(f"Integration startup failed: {exc}")
 
         async def _heartbeat():
             while True:
@@ -71,5 +81,3 @@ class AppRunner:
             heartbeat_task.cancel()
             with contextlib.suppress(Exception):
                 await heartbeat_task
-
-

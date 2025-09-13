@@ -7,8 +7,10 @@ from loguru import logger
 from pipecat.frames.frames import (
     TextFrame,
     LLMMessagesFrame,
+    LLMMessagesAppendFrame,
     LLMFullResponseStartFrame,
     LLMFullResponseEndFrame,
+    LLMTextFrame,
     TTSStartedFrame,
     TTSStoppedFrame,
     OutputAudioRawFrame,
@@ -27,6 +29,9 @@ def register_handlers(task, state: SharedState, bus: OverlayEventBus) -> None:
     async def _log_upstream_frames(_, frame):  # noqa: D401
         if isinstance(frame, LLMMessagesFrame):
             logger.info("LLM request → OpenRouter (LLMMessagesFrame)")
+        elif isinstance(frame, LLMMessagesAppendFrame):
+            rl = getattr(frame, "run_llm", None)
+            logger.info(f"LLM context append (LLMMessagesAppendFrame) run_llm={rl}")
 
     @task.event_handler("on_frame_reached_downstream")
     async def _log_downstream_frames(_, frame):  # noqa: D401
@@ -36,6 +41,10 @@ def register_handlers(task, state: SharedState, bus: OverlayEventBus) -> None:
             logger.info("LLM response started")
         elif isinstance(frame, LLMFullResponseEndFrame):
             logger.info("LLM response ended")
+        elif isinstance(frame, LLMTextFrame):
+            txt = str(getattr(frame, "text", "") or "")
+            if txt:
+                logger.debug(f"LLM token: {txt}")
         elif isinstance(frame, TTSStartedFrame):
             logger.info("TTS synthesis started (→ ElevenLabs)")
         elif isinstance(frame, OutputAudioRawFrame):
@@ -82,7 +91,9 @@ def register_handlers(task, state: SharedState, bus: OverlayEventBus) -> None:
         TranscriptionFrame as _TF,
     )
 
-    task.set_reached_upstream_filter((_U,))
+    from pipecat.frames.frames import LLMMessagesAppendFrame as _UA
+
+    task.set_reached_upstream_filter((_U, _UA))
     task.set_reached_downstream_filter((_T, _RS, _RE, _TS, _OA, _TE, _IT, _TF))
 
     # Overlay sync: toggle speaking in state and broadcast events
@@ -104,5 +115,3 @@ def register_handlers(task, state: SharedState, bus: OverlayEventBus) -> None:
                 await bus.broadcast("force_state", {"state": None})
             except Exception:  # pragma: no cover - best-effort broadcast
                 pass
-
-

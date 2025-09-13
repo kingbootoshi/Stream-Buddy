@@ -12,5 +12,8 @@ pyyaml
 fastapi
 uvicorn[standard]
  
-# Twitch IRC client
-twitchio
+# Twitch chat client (EventSub-based, v3)
+twitchio>=3.1.0
+
+# HTTP client for Helix user resolution
+httpx
