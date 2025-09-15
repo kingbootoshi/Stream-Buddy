@@ -27,7 +27,6 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Optional
-from collections import deque
 
 from loguru import logger
 import httpx
@@ -73,11 +72,10 @@ class TwitchChatIntegration(BaseIntegration):
             self._cooldown_secs = float(os.getenv("TWITCH_ACTIVATION_COOLDOWN_SECS", "3"))
         except Exception:
             self._cooldown_secs = 3.0
-        self._echo_to_chat = (os.getenv("TWITCH_ECHO_ASSISTANT_TO_CHAT", "1").strip() != "0")
+        # Always echo assistant responses into chat for chat-origin turns
 
         # Runtime state
-        self._current_user: Optional[str] = None
-        self._pending_users = deque()
+        # Attribution now derives from SharedState.current_turn_* (via TurnArbiter)
         self._collecting_llm = False
         self._llm_buf: list[str] = []
 
@@ -97,27 +95,25 @@ class TwitchChatIntegration(BaseIntegration):
             if isinstance(frame, LLMFullResponseStartFrame):
                 self._collecting_llm = True
                 self._llm_buf.clear()
-                # Attribute next LLM turn to first pending twitch user
-                if not self._current_user and self._pending_users:
-                    try:
-                        self._current_user = self._pending_users.popleft()
-                    except Exception:
-                        self._current_user = None
             elif isinstance(frame, LLMFullResponseEndFrame):
                 # LLM finished; optionally echo the final composed text to chat
                 self._collecting_llm = False
                 final = "".join(self._llm_buf).strip()
-                if final and self._echo_to_chat and self._current_user and self._bot:
+                # Always echo only when the active turn is twitch-origin
+                if (
+                    final
+                    and (self.state.current_turn_origin == "twitch")
+                    and self._bot
+                ):
                     try:
+                        user = self.state.current_turn_user or ""
+                        mention = f"@{user} " if user else ""
                         await self._bot.send_message_to_broadcaster(
                             self._bot.broadcaster_id,
-                            f"@{self._current_user} {final[:350]}",
+                            f"{mention}{final[:350]}",
                         )
                     except Exception as exc:
                         logger.warning(f"Twitch echo failed: {exc}")
-                    finally:
-                        # Clear attribution after echoing
-                        self._current_user = None
             elif self._collecting_llm and hasattr(frame, "text"):
                 try:
                     txt = str(getattr(frame, "text", "") or "")
@@ -145,7 +141,6 @@ class TwitchChatIntegration(BaseIntegration):
     async def on_keyword_hit(self, user: str, text: str) -> None:
         """Send a chat message into the TwitchChatSource (non-blocking)."""
         try:
-            self._pending_users.append(user)
             await self.source.ingest(user, text)
         except Exception as exc:
             logger.warning(f"Failed to ingest twitch chat into pipeline: {exc}")

@@ -26,6 +26,10 @@ class SharedState:
     hat: Optional[str] = None
     forced_state: Optional[str] = None
 
+    # Current turn metadata (published by TurnArbiter)
+    current_turn_origin: Optional[str] = None  # "voice" | "twitch" | None
+    current_turn_user: Optional[str] = None    # twitch username if origin == twitch
+
     _listeners: List[StateListener] = field(default_factory=list)
 
     def add_listener(self, listener: StateListener) -> None:
@@ -75,4 +79,16 @@ class SharedState:
             logger.debug(f"forced_state set to {self.forced_state}")
             self._notify("forced_state_changed", self.forced_state)
 
+    # --- Turn metadata helpers (used by TurnArbiter and integrations) ---
+    def set_current_turn(self, origin: Optional[str], user: Optional[str]) -> None:
+        self.current_turn_origin = origin
+        self.current_turn_user = user
+        logger.debug(f"current_turn set origin={origin} user={user}")
+        self._notify("current_turn_changed", {"origin": origin, "user": user})
+
+    def clear_current_turn(self) -> None:
+        self.current_turn_origin = None
+        self.current_turn_user = None
+        logger.debug("current_turn cleared")
+        self._notify("current_turn_changed", {"origin": None, "user": None})
 

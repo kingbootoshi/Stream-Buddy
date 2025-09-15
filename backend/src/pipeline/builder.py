@@ -25,6 +25,7 @@ from ..processors.user_text_normalizers import (
     make_voice_usertext_producer,
     make_twitch_usertext_producer,
 )
+from ..processors.turn_arbiter import TurnArbiter
 from ..services.audio import create_audio_transport
 from ..services.stt import create_stt_service
 from ..services.llm import create_llm_service, create_llm_context_and_aggregator
@@ -81,11 +82,15 @@ def build_parallel_pipeline(settings: Settings, state: SharedState):
     # Prevent raw TextFrames from flowing past the user context merge
     drop_raw_text = DropRawTextBeforeLLM()
 
+    # Central turn arbiter (serialize voice/twitch turns)
+    turn_arbiter = TurnArbiter(state, fairness_after_voice=1, turn_timeout_secs=60.0)
+
     pipeline = Pipeline(
         [
             parallel,
             cons_voice,
             cons_twitch,
+            turn_arbiter,
             context_aggregator.user(),
             drop_raw_text,
             llm,
