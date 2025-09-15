@@ -29,7 +29,7 @@ async def _stt_to_llm_append(frame: Frame) -> Frame:
         # from Twitch chat reliably. We keep the raw content unbracketed so it
         # reads naturally in conversation transcripts.
         text = f"[Bootoshi] says {content}"
-        logger.info(f"<yellow>[VOICE->PRODUCER]</yellow> {text}")
+        logger.log("VOICE", f"[VOICE->PRODUCER] {text}")
         message = {"role": "user", "content": text, "name": "voice:bootoshi"}
         return LLMMessagesAppendFrame(messages=[message], run_llm=True)
     return frame

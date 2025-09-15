@@ -227,7 +227,7 @@ class _Bot(commands.Bot):
 
     async def event_ready(self) -> None:
         logger.success(
-            f"<bold><yellow>[READY]</yellow></bold> Twitch bot logged in as: {self.user}"
+            f"[READY] Twitch bot logged in as: {self.user}"
         )
         # Optional greeting, like example.py
         try:
@@ -267,14 +267,12 @@ class _Bot(commands.Bot):
 
             # Log the chat line (excluding the bot itself)
             chan = getattr(getattr(payload, "broadcaster", None), "name", "?")
-            logger.info(f"<cyan>[CHAT]</cyan> [{chan}] <{user}> {text}")
+            logger.log("CHAT", f"[{chan}] <{user}> {text}")
 
             # Keyword detection (contains-any, case-insensitive)
             text_l = text.lower()
             if any(k in text_l for k in self.integration._keywords):
-                logger.info(
-                    f"<magenta>[HIT]</magenta> @{user} in #{chan}: trigger detected → queued"
-                )
+                logger.log("HIT", f"@{user} in #{chan}: trigger detected → queued")
                 await self.integration.on_keyword_hit(user=user, text=text)
         except Exception as exc:
             logger.debug(f"event_message error: {exc}")
@@ -287,7 +285,7 @@ class _Bot(commands.Bot):
                 self._target_partial_user = self.create_partialuser(broadcaster_id)
             await self._target_partial_user.send_message(sender=self.user, message=message)
             logger.success(
-                f"<green>[SEND]</green> -> #{self.channel_login}: '{message}'"
+                f"[SEND] -> #{self.channel_login}: '{message}'"
             )
         except Exception as exc:
             logger.warning(

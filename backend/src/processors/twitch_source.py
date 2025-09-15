@@ -90,6 +90,6 @@ class TwitchChatSource(FrameProcessor):
                 # Simple cooldown: requeue and wait a bit
                 await asyncio.sleep(self._cooldown)
             text = f"Twitch Chat User [{item.user}] says [{item.text}]"
-            logger.info(f"<magenta>[PIPE<-TWITCH]</magenta> {text}")
+            logger.log("PIPE", f"[PIPE<-TWITCH] {text}")
             await self.push_frame(TextFrame(text=text), FrameDirection.DOWNSTREAM)
             self._last_emit = time.monotonic()

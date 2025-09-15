@@ -104,8 +104,9 @@ class TurnArbiter(FrameProcessor):
                 # Unknown goes to twitch queue to avoid starving chat
                 self._twitch_q.append(item)
 
-            logger.info(
-                f"<blue>[QUEUE]</blue> add origin={origin} user={user} sizes v={len(self._voice_q)} t={len(self._twitch_q)}"
+            logger.log(
+                "QUEUE",
+                f"add origin={origin} user={user} sizes v={len(self._voice_q)} t={len(self._twitch_q)}",
             )
 
             # Try to release immediately if idle
@@ -165,8 +166,9 @@ class TurnArbiter(FrameProcessor):
 
         self.state.set_current_turn(origin=item.origin, user=item.user)
 
-        logger.info(
-            f"<blue>[TURN]</blue> release origin={item.origin} user={item.user} raw='{item.raw[:80]}'"
+        logger.log(
+            "TURN",
+            f"release origin={item.origin} user={item.user} raw='{item.raw[:80]}'",
         )
         await self.push_frame(item.frame, FrameDirection.DOWNSTREAM)
 
@@ -206,4 +208,3 @@ class TurnArbiter(FrameProcessor):
             await self._finish_current_turn()
         except asyncio.CancelledError:  # normal when turn finishes in time
             pass
-

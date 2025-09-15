@@ -41,8 +41,5 @@
 - Required keys: `ASSEMBLYAI_API_KEY`, `OPENROUTER_API_KEY`, `ELEVENLABS_API_KEY`; Twitch: `TWITCH_*`; overlay header: `X-Overlay-Key` (matches `OVERLAY_KEY`).
 - Web endpoints: REST under `/api/*`, WS at `/ws/overlay`.
 
-x
-
 ## Docs
-- Pipecat Master Guide: `docs/pipecat-master-guide.md`
-- Pipeline Diagram (Mermaid): `docs/pipeline.md`
+- Make sure to read ALL the docs at docs/ before continuing to code
