@@ -36,6 +36,7 @@ class Settings:
     system_prompt: str
     voice_id: str
     memory_user_id: str
+    twitch_trigger_words: List[str]
 
     audio_in_sample_rate: int = 16000
     audio_out_sample_rate: int = 22050
@@ -105,6 +106,16 @@ class Settings:
         eleven = data.get("elevenlabs", {}) or {}
         memory = data.get("memory", {}) or {}
         openrouter = data.get("openrouter", {}) or {}
+        twitch = data.get("twitch", {}) or {}
+
+        trigger_words_raw = twitch.get(
+            "trigger_words", ["questboo", "quest boo", "duck", "chicken"]
+        )
+        if isinstance(trigger_words_raw, str):
+            trigger_source = trigger_words_raw.split(",")
+        else:
+            trigger_source = trigger_words_raw
+        trigger_words = [str(word).strip() for word in trigger_source if str(word).strip()]
 
         settings = Settings(
             assemblyai_api_key=os.environ["ASSEMBLYAI_API_KEY"],
@@ -116,11 +127,11 @@ class Settings:
             system_prompt=system_prompt,
             voice_id=str(eleven.get("voice_id", "V33LkP9pVLdcjeB2y5Na")),
             memory_user_id=str(memory.get("user_id", "<default>")),
+            twitch_trigger_words=trigger_words,
         )
 
         logger.info(
             f"Loaded settings (voice_id={settings.voice_id}, memory.user_id={settings.memory_user_id}, model={settings.openrouter_model})"
         )
         return settings
-
 

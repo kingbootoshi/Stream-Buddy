@@ -61,11 +61,10 @@ class TwitchChatIntegration(BaseIntegration):
 
         # Config from env (same as example.py expectations)
         self.channel_login = (os.getenv("TWITCH_CHANNEL") or "bootoshicodes").strip()
-        # Comma-separated keyword list; defaults align with example.py
         self._keywords = {
-            s.strip().lower()
-            for s in (os.getenv("TWITCH_TRIGGER_WORDS", "questboo,duck,chicken").split(","))
-            if s.strip()
+            word.strip().lower()
+            for word in self.settings.twitch_trigger_words
+            if str(word).strip()
         }
         # Cooldown between dequeued turns to minimize chat spam
         try:

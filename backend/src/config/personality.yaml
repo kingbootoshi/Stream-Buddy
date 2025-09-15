@@ -173,3 +173,10 @@ memory:
   user_id: Bootoshi
 openrouter:
   model: meta-llama/llama-3.3-70b-instruct
+twitch:
+  trigger_words:
+    - "questboo"
+    - "quest boo"
+    - "duck"
+    - "chicken"
+    - "qb"
