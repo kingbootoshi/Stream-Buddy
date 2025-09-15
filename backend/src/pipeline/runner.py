@@ -13,7 +13,7 @@ from ..core.state import SharedState
 from ..config.settings import Settings
 from ..api.events import OverlayEventBus
 from ..api.server import create_api
-from .builder_parallel import build_parallel_pipeline
+from .builder import build_parallel_pipeline
 from .handlers import register_handlers
 
 

@@ -25,7 +25,10 @@ async def _is_final_transcription(frame: Frame) -> bool:
 async def _stt_to_llm_append(frame: Frame) -> Frame:
     if isinstance(frame, TranscriptionFrame):
         content = getattr(frame, "text", "") or ""
-        text = f"Bootoshi says [{content}]"
+        # Prefix voice-originated content so the LLM can differentiate Bootoshi
+        # from Twitch chat reliably. We keep the raw content unbracketed so it
+        # reads naturally in conversation transcripts.
+        text = f"[Bootoshi] says {content}"
         logger.info(f"<yellow>[VOICE->PRODUCER]</yellow> {text}")
         message = {"role": "user", "content": text, "name": "voice:bootoshi"}
         return LLMMessagesAppendFrame(messages=[message], run_llm=True)
@@ -58,8 +61,16 @@ async def _twitch_text_to_llm_append(frame: Frame) -> Frame:
             except Exception:
                 # Fall back to raw
                 content = raw
-        message = {"role": "user", "content": content}
+        # Prefix chat-originated content with a clear tag and username so the
+        # LLM can address viewers directly and distinguish them from Bootoshi.
         if user_name:
+            display = f"[CHAT] [{user_name}] says {content}"
+        else:
+            display = f"[CHAT] says {content}"
+
+        message = {"role": "user", "content": display}
+        if user_name:
+            # Retain the structured name for downstream analytics/routing.
             message["name"] = f"twitch:{user_name}"
         # Ask the LLM to run for this appended message
         return LLMMessagesAppendFrame(messages=[message], run_llm=True)
